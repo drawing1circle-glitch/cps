@@ -30,3 +30,4 @@ node fill-sheet.js 表格.xlsx --start 143 --col G --sheet 工作表名
 
 每行自动找含链接（onelink 短链或 flickreels.net 落地页）的单元格，抓到的链接写进 G 列，结果另存为 `表格_结果.xlsx`，原文件不改动。
 - 落地页按钮文案不是 “Continue Watching” 时，用 `CLICK_TEXT=按钮文字` 指定
+- 抓不到时加 `DEBUG=1` 运行，会显示点击情况和请求列表，并保存当前页面截图 `debug-*.png`

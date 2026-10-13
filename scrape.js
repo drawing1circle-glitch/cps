@@ -45,15 +45,22 @@ function isOnelink(link) {
   return ONELINK.test(link);
 }
 
-// 依次尝试按钮文字，点到第一个能点的
+const DEBUG = !!process.env.DEBUG;
+const log = (...a) => DEBUG && console.log('  [debug]', ...a);
+
+// 依次尝试按钮文字，点到第一个看得见的
 async function clickWatch(page) {
   for (const text of CLICK_TEXTS) {
-    const el = page.getByText(text, { exact: false }).first();
+    const el = page.getByText(text, { exact: false }).filter({ visible: true }).first();
     try {
-      await el.waitFor({ state: 'visible', timeout: text === CLICK_TEXTS[0] ? TIMEOUT_MS / 2 : 1000 });
-      await el.click({ timeout: 3000 });
+      await el.waitFor({ state: 'visible', timeout: text === CLICK_TEXTS[0] ? TIMEOUT_MS : 1000 });
+      await el.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+      await el.click({ timeout: 5000 });
+      log(`已点击 “${text}”`);
       return true;
-    } catch {}
+    } catch (e) {
+      log(`没点到 “${text}”: ${e.message.split('\n')[0]}`);
+    }
   }
   return false;
 }
@@ -69,43 +76,60 @@ async function capture(context, link) {
   const onPage = (p) => popups.push(p);
   context.on('page', onPage);
 
-  let onRequest;
-  try {
-    return await new Promise((resolve) => {
-      const timer = setTimeout(() => resolve(null), TIMEOUT_MS);
-      const done = (url) => {
-        if (url && target.test(url) && url !== link) {
-          clearTimeout(timer);
-          resolve(KEEP_FRAGMENT || landing ? url : url.split('#')[0]);
-        }
-      };
-      // 和 DevTools Network 面板同一个数据源
-      cdp.on('Network.requestWillBeSent', (e) => {
-        done(e.request.url + (e.request.urlFragment || ''));
-        // 302 跳转：Location 指向目标
-        if (e.redirectResponse) done(e.redirectResponse.headers.location || e.redirectResponse.headers.Location);
-      });
-      page.on('framenavigated', (f) => done(f.url()));
-      // 点击后如果在新标签页打开，也能抓到
-      onRequest = (req) => done(req.url());
-      context.on('request', onRequest);
-
-      page
-        .goto(link, { waitUntil: landing ? 'domcontentloaded' : 'commit', timeout: TIMEOUT_MS })
-        .catch(() => {
-          // intent:// 无法加载会报 ERR_ABORTED / ERR_UNKNOWN_URL_SCHEME，这里忽略
-        })
-        .then(async () => {
-          if (landing && !(await clickWatch(page).catch(() => false))) {
-            console.error(`  ! 没找到 “${CLICK_TEXTS[0]}” 按钮: ${link}`);
-            // 再等 2 秒，给已经发出的跳转留时间，然后放弃
-            setTimeout(() => { clearTimeout(timer); resolve(null); }, 2000);
-          }
-        });
+  let found = null;
+  let notify = () => {};
+  const done = (url) => {
+    if (!found && url && target.test(url) && url !== link) {
+      found = KEEP_FRAGMENT || landing ? url : url.split('#')[0];
+      notify();
+    }
+  };
+  // 等到抓到目标，或超时
+  const waitFound = (ms) =>
+    new Promise((resolve) => {
+      if (found) return resolve();
+      const t = setTimeout(resolve, ms);
+      notify = () => { clearTimeout(t); resolve(); };
     });
+
+  // 和 DevTools Network 面板同一个数据源
+  cdp.on('Network.requestWillBeSent', (e) => {
+    log('请求', e.request.url.slice(0, 120));
+    done(e.request.url + (e.request.urlFragment || ''));
+    // 302 跳转：Location 指向目标
+    if (e.redirectResponse) done(e.redirectResponse.headers.location || e.redirectResponse.headers.Location);
+  });
+  page.on('framenavigated', (f) => done(f.url()));
+  // 点击后如果在新标签页打开，也能抓到
+  const onRequest = (req) => done(req.url());
+  context.on('request', onRequest);
+
+  try {
+    const nav = page
+      .goto(link, { waitUntil: landing ? 'domcontentloaded' : 'commit', timeout: TIMEOUT_MS * 2 })
+      .catch((e) => log('打开页面:', e.message.split('\n')[0])); // intent:// 无法加载会报错，忽略
+
+    if (!landing) {
+      await Promise.race([nav, waitFound(TIMEOUT_MS)]);
+      await waitFound(TIMEOUT_MS);
+      return found;
+    }
+
+    await Promise.race([nav, waitFound(TIMEOUT_MS * 2)]);
+    if (found) return found;
+    const clicked = await clickWatch(page).catch(() => false);
+    if (!clicked) console.error(`  ! 没找到 “${CLICK_TEXTS[0]}” 按钮: ${link}`);
+    // 点击后再等一段时间（页面可能先发统计请求再跳转）
+    await waitFound(clicked ? TIMEOUT_MS : 2000);
+    if (!found && DEBUG) {
+      const shot = `debug-${Date.now()}.png`;
+      await page.screenshot({ path: shot, fullPage: true }).catch(() => {});
+      log(`当前页面 ${page.url()}，截图已保存 ${shot}`);
+    }
+    return found;
   } finally {
     context.off('page', onPage);
-    if (onRequest) context.off('request', onRequest);
+    context.off('request', onRequest);
     for (const p of [page, ...popups]) await p.close().catch(() => {});
   }
 }
@@ -115,7 +139,8 @@ async function launch() {
     headless: process.env.HEADFUL ? false : true,
     executablePath: process.env.CHROME_PATH || undefined,
     channel: process.env.CHROME_PATH ? undefined : 'chrome',
-  }).catch(() => chromium.launch({ headless: !process.env.HEADFUL }));
+    args: ['--disable-blink-features=AutomationControlled'],
+  }).catch(() => chromium.launch({ headless: !process.env.HEADFUL, args: ['--disable-blink-features=AutomationControlled'] }));
 
   // 对应截图里的 Dimensions: Samsung 360 x 800
   const context = await browser.newContext({
