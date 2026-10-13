@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "自动抓取 onelink 短链跳转出的 intent:// 链接",
   "scripts": {
-    "scrape": "node scrape.js -f links.txt"
+    "scrape": "node scrape.js -f links.txt",
+    "sheet": "node fill-sheet.js"
   },
   "repository": {
     "type": "git",
@@ -17,6 +18,7 @@
   },
   "homepage": "https://github.com/drawing1circle-glitch/cps#readme",
   "dependencies": {
+    "exceljs": "^4.4.0",
     "playwright-core": "^1.56.0"
   }
 }

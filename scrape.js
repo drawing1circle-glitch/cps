@@ -63,13 +63,7 @@ async function capture(context, link) {
   }
 }
 
-(async () => {
-  const links = parseArgs(process.argv.slice(2));
-  if (!links.length) {
-    console.error('用法: node scrape.js <链接...>  或  node scrape.js -f links.txt');
-    process.exit(1);
-  }
-
+async function launch() {
   const browser = await chromium.launch({
     headless: process.env.HEADFUL ? false : true,
     executablePath: process.env.CHROME_PATH || undefined,
@@ -81,6 +75,19 @@ async function capture(context, link) {
     ...devices['Galaxy S9+'],
     viewport: { width: 360, height: 800 },
   });
+  return { browser, context };
+}
+
+module.exports = { launch, capture };
+
+if (require.main === module) (async () => {
+  const links = parseArgs(process.argv.slice(2));
+  if (!links.length) {
+    console.error('用法: node scrape.js <链接...>  或  node scrape.js -f links.txt');
+    process.exit(1);
+  }
+
+  const { browser, context } = await launch();
 
   const rows = [['short_link', 'intent_url']];
   for (const link of links) {
