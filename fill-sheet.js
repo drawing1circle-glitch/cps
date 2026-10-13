@@ -67,7 +67,19 @@ function findLink(row, outCol) {
   }
 
   const ext = path.extname(opts.file);
-  const outFile = opts.file.slice(0, -ext.length) + '_结果.xlsx';
+  let outFile = opts.file.slice(0, -ext.length) + '_结果.xlsx';
+  // 结果文件被 Excel/WPS 打开时会被锁住，改存成带时间的新文件名，不中途崩溃
+  const save = async () => {
+    try {
+      await wb.xlsx.writeFile(outFile);
+    } catch (e) {
+      if (e.code !== 'EBUSY' && e.code !== 'EPERM') throw e;
+      const alt = opts.file.slice(0, -ext.length) + `_结果_${Date.now()}.xlsx`;
+      console.error(`  ! ${outFile} 被占用（可能在 Excel 里打开着），改存为 ${alt}`);
+      outFile = alt;
+      await wb.xlsx.writeFile(outFile);
+    }
+  };
   const { browser, context } = await launch();
 
   let ok = 0, fail = 0;
@@ -80,11 +92,11 @@ function findLink(row, outCol) {
       url ? ok++ : fail++;
       console.log(`第 ${r} 行  ${link}\n  -> ${url || '未抓到 (超时)'}`);
       // 每 10 行保存一次，中途断掉也不会全丢
-      if ((ok + fail) % 10 === 0) await wb.xlsx.writeFile(outFile);
+      if ((ok + fail) % 10 === 0) await save();
     }
   } finally {
     await browser.close();
-    await wb.xlsx.writeFile(outFile);
+    await save();
   }
   console.log(`\n完成: 成功 ${ok} 条, 失败 ${fail} 条。已保存到 ${outFile}`);
 })();
