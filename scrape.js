@@ -14,6 +14,8 @@ const { chromium, devices } = require('playwright-core');
 const TIMEOUT_MS = 20000;
 // 截图里抓到的链接以 intent:// 开头；也兼容直接跳 dramabox:// 的情况
 const TARGET = /^(intent|dramabox):\/\//i;
+// 默认和 DevTools 里的 Request URL 一样，去掉 #Intent;...;end 部分；设置 KEEP_FRAGMENT=1 可保留
+const KEEP_FRAGMENT = !!process.env.KEEP_FRAGMENT;
 
 function parseArgs(argv) {
   const links = [];
@@ -41,7 +43,7 @@ async function capture(context, link) {
       const done = (url) => {
         if (url && TARGET.test(url)) {
           clearTimeout(timer);
-          resolve(url);
+          resolve(KEEP_FRAGMENT ? url : url.split('#')[0]);
         }
       };
       // 和 DevTools Network 面板同一个数据源
