@@ -1,6 +1,9 @@
 # onelink → intent:// 自动抓取
 
-自动完成在 Chrome 开发者工具里手动做的那几步：手机模式打开短链 → Network 里找到 `intent://open?...` 请求 → 复制 Request URL。
+自动完成在 Chrome 开发者工具里手动做的那几步，支持两种链接，脚本按链接自动判断：
+
+- **onelink 短链**（如 DramaBox `dramabox.onelink.me/dqUm/xxx`）：手机模式打开 → 抓 `intent://open?...` 请求
+- **落地页**（如 FlickReels `flickreels.net/landing_page/xxx`）：手机模式打开 → 点击 “Continue Watching” → 抓 `xxx.onelink.me/...?af_js_web=true...` 请求
 
 ## 使用
 
@@ -25,4 +28,5 @@ node fill-sheet.js 表格.xlsx                        # 默认从第 143 行开�
 node fill-sheet.js 表格.xlsx --start 143 --col G --sheet 工作表名
 ```
 
-每行自动找含 `onelink.me` 的单元格，抓到的链接写进 G 列，结果另存为 `表格_结果.xlsx`，原文件不改动。
+每行自动找含链接（onelink 短链或 flickreels.net 落地页）的单元格，抓到的链接写进 G 列，结果另存为 `表格_结果.xlsx`，原文件不改动。
+- 落地页按钮文案不是 “Continue Watching” 时，用 `CLICK_TEXT=按钮文字` 指定

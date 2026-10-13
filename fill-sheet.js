@@ -4,13 +4,15 @@
 //   node fill-sheet.js 表格.xlsx                 (默认从第 143 行开始，写入 G 列)
 //   node fill-sheet.js 表格.xlsx --start 143 --col G --sheet 工作表名
 //
-// 每一行会自动找含有 onelink.me 的单元格作为短链；结果另存为 “原文件名_结果.xlsx”，原文件不改动。
+// 每一行会自动找含有链接 (onelink 短链或落地页，如 flickreels.net) 的单元格；结果另存为 “原文件名_结果.xlsx”，原文件不改动。
 
 const path = require('path');
 const ExcelJS = require('exceljs');
 const { launch, capture } = require('./scrape');
 
-const LINK = /(https?:\/\/)?[\w.-]*onelink\.me\/[^\s"'<>]+/i;
+// 优先认 onelink 短链和已知落地页，找不到再取单元格里第一个 http 链接
+const KNOWN = /(https?:\/\/)?[\w.-]*(onelink\.me|flickreels\.net)\/[^\s"'<>]+/i;
+const ANY = /https?:\/\/[^\s"'<>]+/i;
 
 function parseArgs(argv) {
   const opts = { file: null, start: 143, col: 'G', sheet: null };
@@ -37,13 +39,16 @@ function cellText(cell) {
 }
 
 function findLink(row, outCol) {
-  let found = null;
-  row.eachCell({ includeEmpty: false }, (cell) => {
-    if (found || cell.address.replace(/\d+/g, '') === outCol) return;
-    const m = cellText(cell).match(LINK);
-    if (m) found = /^https?:\/\//i.test(m[0]) ? m[0] : `https://${m[0]}`;
-  });
-  return found;
+  for (const re of [KNOWN, ANY]) {
+    let found = null;
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      if (found || cell.address.replace(/\d+/g, '') === outCol) return;
+      const m = cellText(cell).match(re);
+      if (m) found = /^https?:\/\//i.test(m[0]) ? m[0] : `https://${m[0]}`;
+    });
+    if (found) return found;
+  }
+  return null;
 }
 
 (async () => {
