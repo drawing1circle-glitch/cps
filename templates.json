@@ -1,0 +1,16 @@
+{
+  "_说明": "A 模板链接（来自《模板 10.13》表的 CTA 行）和各剧场 IOS appid / AOS 包名。链接由工具 http://43.166.243.38:9090/ 生成，脚本只把结果里的 appid 换成包名得到 AOS。",
+  "tool": "http://43.166.243.38:9090/",
+  "apps": {
+    "DramaBox":   { "IOS": "id6445905219", "AOS": "com.storymatrix.drama" },
+    "ReelShort":  { "IOS": "id1636235979", "AOS": "com.newleaf.app.android.victor" },
+    "FlickReels": { "IOS": "id6514312894", "AOS": "com.zyhwplatform.shortplay" },
+    "GoodShort":  { "IOS": "id6448176203", "AOS": "com.newreading.goodreels" },
+    "Saily":      { "IOS": "id6475045151", "AOS": "com.saily.android" }
+  },
+  "CTA": {
+    "DramaBox": "https://app.appsflyer.com/id6445905219?Custom Link ID=<Custom Link ID>&af_c_id=<af_c_id>&af_click_lookback=7d&af_deeplink=true&af_dp=<af_dp>&af_ip=<af_ip>&af_model=<af_model>&af_os_version=<af_os_version>&af_reengagement_window=lifetime&af_siteid=<af_siteid>&bid=<bid>&campaign=<campaign>&chid=<chid>&cid=0&deep_link_sub6=<deep_link_sub6>&deep_link_value=<deep_link_value>&is_retargeting=true&media=op&media_source=other&pid=<pid>&redirect=false&shortlink=<shortlink>&source_caller=api",
+    "ReelShort": "https://app.appsflyer.com/id1636235979?__dynamic_pid=&af_dp=<af_dp>&af_ip=<af_ip>&af_model=<af_model>&af_os_version=<af_os_version>&af_reengagement_window=lifetime&af_siteid=<af_siteid>&af_ua=<af_ua>&af_xp=custom&deep_link_sub6=<deep_link_sub6>&deep_link_value=<deep_link_value>&is_retargeting=true&pid=<pid>&redirect=false",
+    "FlickReels": "https://app.appsflyer.com/id6514312894?__dynamic_pid=&af_dp=<af_dp>&af_ip=<af_ip>&af_js_web=true&af_model=<af_model>&af_os_version=<af_os_version>&af_ss_ui=true&af_ss_ver=2_9_0&af_ua=<af_ua>&c=<c>&deep_link_sub6=<deep_link_sub6>&deep_link_value=<deep_link_value>&pid=<pid>"
+  }
+}
