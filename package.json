@@ -1,0 +1,22 @@
+{
+  "name": "cps",
+  "version": "1.0.0",
+  "description": "自动抓取 onelink 短链跳转出的 intent:// 链接",
+  "scripts": {
+    "scrape": "node scrape.js -f links.txt"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/drawing1circle-glitch/cps.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/drawing1circle-glitch/cps/issues"
+  },
+  "homepage": "https://github.com/drawing1circle-glitch/cps#readme",
+  "dependencies": {
+    "playwright-core": "^1.56.0"
+  }
+}
