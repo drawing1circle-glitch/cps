@@ -11,7 +11,6 @@
 const path = require('path');
 const ExcelJS = require('exceljs');
 const { launch, capture } = require('./scrape');
-const { openTool, generateOnTool } = require('./gen-tool');
 
 // 优先认 onelink 短链和已知落地页，找不到再取单元格里第一个 http 链接
 const KNOWN = /(https?:\/\/)?[\w.-]*(onelink\.me|flickreels\.net)\/[^\s"'<>]+/i;
@@ -88,8 +87,15 @@ function findLink(row, outCol) {
   };
   const { browser, context } = await launch();
   let tool = null;
+  let generateOnTool;
   if (opts.gen) {
-    tool = await openTool(browser).catch((e) => {
+    // 只有要生成投放链接时才需要 gen-tool.js；加 --no-gen 时不用这个文件
+    let gt;
+    try { gt = require('./gen-tool'); } catch (e) {
+      console.error('! 缺少 gen-tool.js / templates.json，本次只抓链接不生成（或加 --no-gen）');
+    }
+    generateOnTool = gt && gt.generateOnTool;
+    tool = gt && await gt.openTool(browser).catch((e) => {
       console.error(`! 打不开生成工具 (${e.message.split('\n')[0]})，本次只抓链接不生成`);
       return null;
     });
