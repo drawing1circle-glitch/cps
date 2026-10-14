@@ -24,7 +24,7 @@ node scrape.js dramabox.onelink.me/dqUm/193078ko
 ## 批量填表（Excel）
 
 ```bash
-node fill-sheet.js 表格.xlsx                        # 默认从第 143 行开始，结果写入 G 列
+node fill-sheet.js 表格.xlsx                        # 默认从第 2 行开始，结果写入 G 列，G 列已有链接的行跳过（--redo 全部重抓）
 node fill-sheet.js 表格.xlsx --start 143 --col G --sheet 工作表名
 ```
 

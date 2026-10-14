@@ -18,7 +18,7 @@ const KNOWN = /(https?:\/\/)?[\w.-]*(onelink\.me|flickreels\.net)\/[^\s"'<>]+/i;
 const ANY = /https?:\/\/[^\s"'<>]+/i;
 
 function parseArgs(argv) {
-  const opts = { file: null, start: 143, col: 'G', sheet: null, to: 'H', gen: true };
+  const opts = { file: null, start: 2, col: 'G', sheet: null, to: 'H', gen: true, redo: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--start') opts.start = parseInt(argv[++i], 10);
@@ -26,6 +26,7 @@ function parseArgs(argv) {
     else if (a === '--sheet') opts.sheet = argv[++i];
     else if (a === '--to') opts.to = argv[++i].toUpperCase();
     else if (a === '--no-gen') opts.gen = false;
+    else if (a === '--redo') opts.redo = true;
     else opts.file = a;
   }
   return opts;
@@ -94,11 +95,14 @@ function findLink(row, outCol) {
     });
   }
 
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0, skipped = 0;
   try {
     for (let r = opts.start; r <= ws.rowCount; r++) {
       const link = findLink(ws.getRow(r), opts.col);
       if (!link) continue;
+      // G 列已经抓到过的行跳过（“未抓到”的会重试）
+      const done = cellText(ws.getCell(`${opts.col}${r}`));
+      if (!opts.redo && /^(intent|dramabox|https?):\/\//i.test(done.trim())) { skipped++; continue; }
       const url = await capture(context, link);
       ws.getCell(`${opts.col}${r}`).value = url || '未抓到';
       url ? ok++ : fail++;
@@ -120,5 +124,5 @@ function findLink(row, outCol) {
     await browser.close();
     await save();
   }
-  console.log(`\n完成: 成功 ${ok} 条, 失败 ${fail} 条。已保存到 ${outFile}`);
+  console.log(`\n完成: 成功 ${ok} 条, 失败 ${fail} 条, 已有链接跳过 ${skipped} 条。已保存到 ${outFile}`);
 })();
