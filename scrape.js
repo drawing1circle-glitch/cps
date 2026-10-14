@@ -26,7 +26,7 @@ const CLICK_TEXTS = process.env.CLICK_TEXT
       // 英语
       'Continue Watching', 'Keep Watching', 'Watch Now', 'Watch Full', 'Play Now',
       // 西班牙语 / 葡萄牙语
-      'Seguir viendo', 'Continuar viendo', 'Ver ahora', 'Continuar assistindo', 'Continuar a ver', 'Assistir agora',
+      'Seguir viendo', 'Seguir mirando', 'Continuar viendo', 'Continuar mirando', 'Ver ahora', 'Continuar assistindo', 'Continuar a ver', 'Assistir agora',
       // 印尼语 / 马来语 / 菲律宾语
       'Lanjutkan menonton', 'Lanjut nonton', 'Tonton sekarang', 'Teruskan menonton', 'Tonton', 'Ituloy ang panonood', 'Manood ngayon',
       // 泰语 / 越南语
@@ -35,10 +35,13 @@ const CLICK_TEXTS = process.env.CLICK_TEXT
       'Continuer à regarder', 'Continuer', 'Regarder maintenant', 'Weiterschauen', 'Weiter ansehen', 'Jetzt ansehen',
       'Continua a guardare', 'Guarda ora', 'İzlemeye devam et', 'Şimdi izle', 'Продолжить просмотр', 'Смотреть', 'Oglądaj dalej',
       // 日 / 韩 / 中 / 阿拉伯 / 印地
-      '続きを見る', '視聴を続ける', '今すぐ見る', '계속 보기', '이어보기', '지금 보기',
+      '続けて見る', '続きを見る', '続きを観る', '視聴を続ける', '今すぐ見る', '今すぐ観る', '계속 보기', '이어보기', '지금 보기',
       '继续观看', '繼續觀看', '立即观看', '立即觀看', '继续看', 'متابعة المشاهدة', 'شاهد الآن', 'देखना जारी रखें', 'अभी देखें',
       // 很短的词只在按钮文字完全等于它时才点，避免点错
       '=Continue', '=Watch', '=Ver', '=Xem', '=ดู', '=Assistir', '=Play',
+      // 关键词：只在按钮这种短文字（≤20 字）里包含时才点，不会点到剧情简介
+      '~見る', '~観る', '~보기', '~观看', '~觀看', '~Watch', '~ดู', '~Xem', '~Tonton', '~Nonton', '~Assist',
+      '~Mirar', '~Ver ', '~Regarder', '~Schau', '~Guarda', '~İzle', '~Смотр', '~شاهد', '~देख', '~Panood',
     ];
 // 文字都匹配不上时，是否兜底点击页面底部最大的按钮 (设 NO_FALLBACK_CLICK=1 关闭)
 const FALLBACK_CLICK = !process.env.NO_FALLBACK_CLICK;
@@ -68,21 +71,29 @@ const DEBUG = !!process.env.DEBUG;
 const log = (...a) => DEBUG && console.log('  [debug]', ...a);
 
 const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const textRe = (t) => (t.startsWith('=') ? new RegExp(`^\\s*${escapeRe(t.slice(1))}\\s*$`, 'i') : new RegExp(escapeRe(t), 'i'));
+const reSrc = (t) =>
+  t.startsWith('=') ? `^\\s*${escapeRe(t.slice(1))}\\s*$`
+  : t.startsWith('~') ? `^(?=[\\s\\S]{1,20}$)[\\s\\S]*${escapeRe(t.slice(1))}`
+  : escapeRe(t);
+const textRe = (t) => new RegExp(reSrc(t), 'i');
 
 // 兜底：点页面底部最宽的那个按钮（落地页的 CTA 一般是底部通栏黄按钮），排除 “Open/打开” 这类顶部按钮
 async function clickBottomButton(page) {
   const idx = await page.evaluate(() => {
-    const skip = /^\s*(open|abrir|buka|打开|打開|開く|열기|ouvrir|öffnen|เปิด|mở|download|下载|install)\s*$/i;
+    const skip = /^\s*(open|abrir|buka|打开|打開|開く|オープン|열기|오픈|ouvrir|öffnen|เปิด|mở|download|下载|ダウンロード|install)\s*$/i;
     const els = [...document.querySelectorAll('button, a, [role=button], div, span')];
     let best = -1, bestBottom = -1;
     els.forEach((el, i) => {
       const r = el.getBoundingClientRect();
       const st = getComputedStyle(el);
+      const text = (el.innerText || '').trim();
       const clickable = /^(BUTTON|A)$/.test(el.tagName) || el.getAttribute('role') === 'button' || st.cursor === 'pointer' || el.onclick;
-      if (!clickable || st.visibility === 'hidden' || st.display === 'none') return;
-      if (r.width < innerWidth * 0.5 || r.height < 30 || r.height > 200) return;
-      if (skip.test(el.innerText || '')) return;
+      // 可点击的元素，或者只有一小段文字的通栏条（Vue 绑定的点击事件看不出来）
+      const solid = !/rgba\(0, 0, 0, 0\)|transparent/.test(st.backgroundColor);
+      if (!clickable && !(text && text.length <= 20) && !(solid && text.length <= 20)) return;
+      if (st.visibility === 'hidden' || st.display === 'none' || r.width === 0) return;
+      if (r.width < innerWidth * 0.5 || r.height < 30 || r.height > 150) return;
+      if (skip.test(text)) return;
       const bottom = r.bottom + scrollY;
       if (bottom > bestBottom) { best = i; bestBottom = bottom; }
     });
@@ -99,7 +110,7 @@ async function clickBottomButton(page) {
 
 // 等任意一种语言的按钮出现，再按优先级点第一个看得见的；都没有就兜底点底部按钮
 async function clickWatch(page) {
-  const any = new RegExp(CLICK_TEXTS.map((t) => (t.startsWith('=') ? `^\\s*${escapeRe(t.slice(1))}\\s*$` : escapeRe(t))).join('|'), 'i');
+  const any = new RegExp(CLICK_TEXTS.map((t) => `(?:${reSrc(t)})`).join('|'), 'i');
   await page.getByText(any).filter({ visible: true }).first().waitFor({ timeout: TIMEOUT_MS }).catch(() => log('等待按钮超时'));
   for (const text of CLICK_TEXTS) {
     const el = page.getByText(textRe(text)).filter({ visible: true }).first();
