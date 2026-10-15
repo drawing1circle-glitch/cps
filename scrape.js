@@ -1,4 +1,5 @@
 // 自动完成在 DevTools Network 面板里手动抓链接的步骤，支持两种链接：
+//   （落地页包括 landing_page 和 app 推广页 app-landing_page；按钮可以是“继续观看”或“Install now / 安装”等各语言说法）
 //
 //   A. onelink 短链 (如 DramaBox: dramabox.onelink.me/dqUm/xxx)
 //      手机模式打开 → 抓被拦截的 intent://open?... 请求
@@ -37,11 +38,20 @@ const CLICK_TEXTS = process.env.CLICK_TEXT
       // 日 / 韩 / 中 / 阿拉伯 / 印地
       '続けて見る', '続きを見る', '続きを観る', '視聴を続ける', '今すぐ見る', '今すぐ観る', '계속 보기', '이어보기', '지금 보기',
       '继续观看', '繼續觀看', '立即观看', '立即觀看', '继续看', 'متابعة المشاهدة', 'شاهد الآن', 'देखना जारी रखें', 'अभी देखें',
+      // app 推广页（app-landing_page）的“安装 / 下载”按钮
+      'Install now', 'Install Now', 'Get the app', 'Download now', 'Download the app',
+      '立即安装', '立即下载', '马上安装', '立即安裝', '立即下載',
+      '今すぐインストール', 'インストール', '지금 설치', '설치하기',
+      'Instalar ahora', 'Instalar agora', 'Instale agora', 'Descargar ahora', 'Baixar agora',
+      'Pasang sekarang', 'Instal sekarang', 'Unduh sekarang', 'ติดตั้งเลย', 'ติดตั้งตอนนี้', 'Cài đặt ngay', 'Tải ngay',
+      'Installer maintenant', 'Télécharger', 'Jetzt installieren', 'Installa ora', 'Şimdi yükle', 'Установить', 'ثبّت الآن', 'تثبيت',
       // 很短的词只在按钮文字完全等于它时才点，避免点错
       '=Continue', '=Watch', '=Ver', '=Xem', '=ดู', '=Assistir', '=Play',
       // 关键词：只在按钮这种短文字（≤20 字）里包含时才点，不会点到剧情简介
       '~見る', '~観る', '~보기', '~观看', '~觀看', '~Watch', '~ดู', '~Xem', '~Tonton', '~Nonton', '~Assist',
       '~Mirar', '~Ver ', '~Regarder', '~Schau', '~Guarda', '~İzle', '~Смотр', '~شاهد', '~देख', '~Panood',
+      '~Install', '~Instal', '~Download', '~安装', '~安裝', '~下载', '~下載', '~インストール', '~ダウンロード', '~설치', '~다운로드',
+      '~Descargar', '~Baixar', '~Pasang', '~Unduh', '~ติดตั้ง', '~ดาวน์โหลด', '~Cài đặt', '~Tải', '~Herunterladen', '~Scarica', '~Yükle', '~İndir', '~Скачать', '~تحميل',
     ];
 // 文字都匹配不上时，是否兜底点击页面底部最大的按钮 (设 NO_FALLBACK_CLICK=1 关闭)
 const FALLBACK_CLICK = !process.env.NO_FALLBACK_CLICK;
@@ -80,7 +90,7 @@ const textRe = (t) => new RegExp(reSrc(t), 'i');
 // 兜底：点页面底部最宽的那个按钮（落地页的 CTA 一般是底部通栏黄按钮），排除 “Open/打开” 这类顶部按钮
 async function clickBottomButton(page) {
   const idx = await page.evaluate(() => {
-    const skip = /^\s*(open|abrir|buka|打开|打開|開く|オープン|열기|오픈|ouvrir|öffnen|เปิด|mở|download|下载|ダウンロード|install)\s*$/i;
+    const skip = /^\s*(open|abrir|buka|打开|打開|開く|オープン|열기|오픈|ouvrir|öffnen|เปิด|mở|apri|aç|открыть)\s*$/i;
     const els = [...document.querySelectorAll('button, a, [role=button], div, span')];
     let best = -1, bestBottom = -1;
     els.forEach((el, i) => {
