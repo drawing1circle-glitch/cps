@@ -6,6 +6,8 @@
 // 目前支持（按推广任务名称里的 IOS / AOS 区分；名称里看不出时用 --default-os IOS 指定）：
 //   GoodShort IOS/AOS：平台前缀 + 抓到链接的全部参数（原样）+ 固定后缀
 //   DramaBox  IOS    ：固定模板，只从抓到链接里取 chid / af_c_id / af_dp / campaign / deep_link_value / onelink_id / shortlink
+//   DramaBox  AOS    ：同 IOS 模板结构，换成安卓包名，bid 取抓到链接里的值，设备参数换成 GAID
+//   FlickReels IOS/AOS：平台前缀 + 抓到链接的参数（pid 换成 {dynamicpid}）+ 固定后缀
 
 const path = require('path');
 const ExcelJS = require('exceljs');
@@ -17,10 +19,31 @@ const DB_IOS =
   '&af_reengagement_window=lifetime&redirect=false&pid={randompid}&af_ip={ip}&af_sub1={sendInfo}&af_sub3={deviceInfo}' +
   '&af_ua={ua}&af_model=iPhone&af_os_version=26.5.2&idfa={idfa}&idfv={idfv}';
 
+const DB_AOS =
+  'https://app.appsflyer.com/com.storymatrix.drama?bid={{bid}}&cid=0&chid={{chid}}&media=op&af_c_id={{af_c_id}}' +
+  '&af_click_lookback=30d&af_deeplink=true&af_dp={{af_dp}}&campaign={{campaign}}&deep_link_value={{deep_link_value}}' +
+  '&is_retargeting=true&media_source=other&onelink_id={{onelink_id}}&shortlink={{shortlink}}&source_caller=api_v2' +
+  '&af_reengagement_window=lifetime&redirect=false&pid={randompid}&af_ip={ip}&af_sub1={sendInfo}&af_sub3={deviceInfo}' +
+  '&af_ua={ua}&af_model={device_model}&af_os_version={osv}&advertising_id={gaid}&md5_advertising_id={md5_gaid}';
+
 const RULES = {
   DramaBox: {
     match: /dramabox/i,
     IOS: { template: DB_IOS },
+    AOS: { template: DB_AOS },
+  },
+  FlickReels: {
+    match: /flickreels/i,
+    IOS: {
+      prefix: 'https://app.appsflyer.com/id6514312894?',
+      suffix: '&af_sub1={sendInfo}&af_sub3={deviceInfo}&af_ua={ua}&af_ip={ip}&af_model=iPhone&af_os_version=26.5.2&idfa={idfa}&idfv={idfv}',
+      pid: '{dynamicpid}',
+    },
+    AOS: {
+      prefix: 'https://app.appsflyer.com/com.zyhwplatform.shortplay?',
+      suffix: '&af_sub1={sendInfo}&af_sub3={deviceInfo}&af_ua={ua}&af_ip={ip}&af_model={device_model}&af_os_version={osv}&advertising_id={gaid}&md5_advertising_id={md5_gaid}',
+      pid: '{dynamicpid}',
+    },
   },
   GoodShort: {
     match: /goodshort/i,
@@ -77,7 +100,8 @@ function build(product, taskName, captured, defaultOs) {
     if (missing.length) return { error: `抓到的链接里缺少 ${missing.join(', ')}` };
     return { os, url };
   }
-  return { os, url: rule[os].prefix + q + rule[os].suffix };
+  const qq = rule[os].pid ? q.replace(/(^|&)pid=[^&]*/, `$1pid=${rule[os].pid}`) : q;
+  return { os, url: rule[os].prefix + qq + rule[os].suffix };
 }
 
 module.exports = { build, RULES };
