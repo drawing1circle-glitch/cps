@@ -18,7 +18,7 @@ const log = (...a) => DEBUG && console.log('  [debug]', ...a);
 const PRODUCTS = [
   ['DramaBox', /dramabox/i],
   ['FlickReels', /flickreels|playletszyhw|zyhw/i],
-  ['ReelShort', /reelshort/i],
+  ['ReelShort', /reelshort|realshortapp|reelslink|cmsvictor/i],
   ['GoodShort', /goodshort|goodreels/i],
   ['Saily', /saily/i],
 ];
